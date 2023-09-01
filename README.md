@@ -12,7 +12,7 @@ This project provides a containerized environment for Laravel development, makin
 - **Components Included**:
   - **PHP 8.2**: The latest PHP version provides enhanced performance and features.
   - **Nginx**: A powerful web server ensures efficient routing and handling of HTTP requests.
-  - **MySQL**: A reliable relational database management system for data storage.
+  - **PostgreSQL**: A reliable relational database management system for data storage.
   - **Worker**: Asynchronous job processing for background tasks using Laravel's built-in job processing capabilities.
   - **Mailhog**: A local email testing tool to streamline email testing during development.
   - **Redis**: In-memory data store for caching and improving application performance.
@@ -32,4 +32,3 @@ This project provides a containerized environment for Laravel development, makin
 ## License
 
 This project is licensed under the GNU License - see the [LICENSE](LICENSE) file for details.
-
