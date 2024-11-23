@@ -1,2 +1,4 @@
 # Ignore environment-specific files
 .env
+.data
+.idea

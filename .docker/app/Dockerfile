@@ -5,13 +5,16 @@
 #
 FROM php:8.2-fpm-alpine
 
-LABEL authors="Rifat"
-
 ARG SERVER_ENVIRONMENT
+ARG APP_DIR=/var/www/app
+
+# Setup Working Dir
+WORKDIR $APP_DIR
 
 RUN set -ex \
   && apk --no-cache add \
-    postgresql-dev
+    postgresql-dev \
+    make
 
 # Add Repositories
 RUN rm -f /etc/apk/repositories &&\
@@ -20,76 +23,91 @@ RUN rm -f /etc/apk/repositories &&\
 
 # fix work iconv library with alpine
 RUN apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted gnu-libiconv
-
 ENV LD_PRELOAD /usr/lib/preloadable_libiconv.so php
 
 # Add Build Dependencies
 RUN apk add --no-cache \
-    libzip-dev \
+    php82-pear \
     libwebp-dev \
-    icu-dev \
+    libzip-dev \
     libjpeg-turbo-dev \
     libjpeg-turbo \
     libpng-dev \
     libxpm-dev \
-    freetype-dev \
+    php82-dev gcc \
     zlib-dev \
     curl-dev \
+    imagemagick \
+    imagemagick-dev \
+    freetype-dev \
     icu-dev \
     g++ \
     npm \
-    zip
-
-
-RUN apk --no-cache add php82-pear \
-php82-dev gcc \
-musl-dev \
-php82-pecl-imagick \
-make \
-imagemagick \
-imagemagick-dev
+    zip \
+    git \
+    unzip
 
 # Configure & Install Extension
 RUN docker-php-ext-install -j "$(nproc)" \
     curl \
+    pgsql \
     pdo \
     pdo_pgsql \
-    pgsql \
     bcmath \
     zip
 
-# Install Redis
-RUN pecl install redis && docker-php-ext-enable redis
 
 RUN docker-php-ext-configure intl && \
-  docker-php-ext-install intl &&\
-  docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql
+    docker-php-ext-install intl &&\
+    docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql
 
-# Install Imagick extension
-RUN pecl install imagick && docker-php-ext-enable imagemagick
-  
+
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp && \
     docker-php-ext-install -j$(nproc) gd
+
+RUN docker-php-ext-configure pcntl --enable-pcntl \
+  && docker-php-ext-install pcntl
+
+#Install Redis
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Install Build Tools
+RUN apk add --no-cache build-base
+
+# Install Imagick PHP extension
+RUN apk update && apk upgrade
+
+RUN pecl install imagick && docker-php-ext-enable imagick
+
+# RUN apk add --no-cache --virtual .build-deps $PHPIZE_DEPS imagemagick-dev \
+#     && pecl install imagick \
+#     && docker-php-ext-enable imagick \
+#     && apk del .build-deps
+
 
 # Configure and enable OPCache extension
 RUN docker-php-ext-configure opcache --enable-opcache
 RUN docker-php-ext-install opcache
-
-# Custom php.ini config
-COPY .docker/app/opcache.ini $PHP_INI_DIR/conf.d/
-COPY .docker/app/php.ini $PHP_INI_DIR/conf.d/
-
 # Add Composer lastest version
-RUN curl -sS https://getcomposer.org/installer | \
-php -- --install-dir=/usr/bin/ --filename=composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer
 
-COPY .docker/app/init.sh /user/bin
-RUN chmod +x /user/bin/init.sh
+COPY ./.docker/app/opcache.ini $PHP_INI_DIR/conf.d/
+COPY ./.docker/app/php.ini $PHP_INI_DIR/conf.d/
 
-# Setup Working Dir
-WORKDIR /var/www/html
+# Copy configuration files
+RUN cd $APP_DIR
+RUN chown www-data:www-data $APP_DIR
+#COPY --chown=www-data:www-data . .
+RUN mkdir -p /var/www/app/bootstrap/cache
+RUN chmod -R 775 /var/www/app/bootstrap/cache
 
-# RUN mkdir -p storage/logs
-# RUN touch storage/logs/worker.log
+COPY ./.docker/app/init.sh /usr/bin/startx.sh
+RUN chmod +x /usr/bin/startx.sh
 
-ENTRYPOINT ["/user/bin/startx.sh"]
+RUN mkdir -p storage/logs
+RUN touch storage/logs/worker.log
+
+RUN chown -R www-data:www-data /var/www/app
+RUN chown -R www-data:www-data /var/www/app/storage
+
+ENTRYPOINT ["/usr/bin/startx.sh"]
