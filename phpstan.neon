@@ -1,0 +1,11 @@
+includes:
+    - vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/  # Path to scan (usually 'app' directory in Laravel)
+    level: 5  # Analysis level (0 = basic, 9 = strictest)
+    ignoreErrors: []  # Optional: Add patterns to ignore specific errors
+analyse:
+    checkMissingIterableValueType: false
+
